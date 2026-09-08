@@ -1,0 +1,22 @@
+name: watchdog
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  vigilar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ping
+        id: ping
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 https://evocore-backend-fjnp.onrender.com/)
+          echo "code=$code" >> $GITHUB_OUTPUT
+          if [ "$code" != "200" ]; then exit 1; fi
+      - name: alertar
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT }}/sendMessage" \
+            -d chat_id="${{ secrets.TG_CHAT }}" \
+            -d text="🚨 WATCHDOG: EvoCore no responde (HTTP ${{ steps.ping.outputs.code }}). Revisá Render o UptimeRobot."
